@@ -1,0 +1,6 @@
+[submodule "external/rqt2_widgets"]
+	path = external/rqt2_widgets
+	url = https://github.com/RQT2/rqt2-widgets.git
+[submodule "external/rqt2_components"]
+	path = external/rqt2_components
+	url = https://github.com/RQT2/rqt2-components.git

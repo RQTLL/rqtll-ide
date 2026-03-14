@@ -17,6 +17,10 @@ class HomeController(QObject):
                              icon_dirs=self.root.icon_dirs, 
                              theme=self.root.theme)
         self._setup_connections()
+        try:
+            self.f0.uiReinitialized.connect(self._setup_connections)
+        except Exception:
+            pass
         self.f0.show()
 
     def _setup_connections(self):
@@ -34,7 +38,10 @@ class HomeController(QObject):
                              parent=self.f0, theme=self.root.theme)
         self.f1.setAttribute(Qt.WA_DeleteOnClose)
         self.f0.ui.FRAMENew.setEnabled(False)
-        
+        try:
+            self.f1.uiReinitialized.connect(lambda: None)
+        except Exception:
+            pass
         self.f1.ui.BTNCancell.clicked.connect(self.f1.close)
         self.f1.destroyed.connect(lambda: self.f0.ui.FRAMENew.setEnabled(True))
         self.f1.ui.BTNMake.clicked.connect(lambda: self.switch_to_ide("Nuevo"))
@@ -47,7 +54,10 @@ class HomeController(QObject):
                              parent=self.f0, theme=self.root.theme)
         self.f3.setAttribute(Qt.WA_DeleteOnClose)
         self.f0.ui.FRAMEClone.setEnabled(False)
-        
+        try:
+            self.f3.uiReinitialized.connect(lambda: None)
+        except Exception:
+            pass
         self.f3.ui.BTNCancell.clicked.connect(self.f3.close)
         self.f3.destroyed.connect(lambda: self.f0.ui.FRAMEClone.setEnabled(True))
         self.f3.ui.BTNClone.clicked.connect(lambda: self.switch_to_ide("Clonado"))
@@ -68,4 +78,8 @@ class HomeController(QObject):
         self.main_ide = DemoWindow(Ui_Form, title=f"RQT2 IDE / {os.path.basename(ws_path)}", 
                                    icon_dirs=self.root.icon_dirs, 
                                    show_daemon=True, show_tab=True, theme=self.root.theme)
+        try:
+            self.main_ide.uiReinitialized.connect(lambda: None)
+        except Exception:
+            pass
         self.main_ide.show()

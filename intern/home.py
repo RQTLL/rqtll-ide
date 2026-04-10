@@ -6,11 +6,13 @@ from external.rqt2_widgets.forms.f1_ui_new_ws import Ui_Widget as Ui_F1
 from external.rqt2_widgets.forms.f3_ui_clone_ws import Ui_Widget as Ui_F3
 from external.rqt2_widgets.forms.ui_form import Ui_Widget as Ui_Form
 from external.rqt2_widgets.utils.base_window import DemoWindow
+from .clone_ws import CloneWorkspaceController
 
 class HomeController(QObject):
     def __init__(self, root_controller):
         super().__init__()
         self.root = root_controller
+        self.clone_ws = CloneWorkspaceController(self.root, current_notify_id=self.root.current_notify_id)
         self.active_dialogs = []
         
         self.f0 = DemoWindow(Ui_F0, title="RQT2 IDE", 
@@ -60,7 +62,7 @@ class HomeController(QObject):
             pass
         self.f3.ui.BTNCancell.clicked.connect(self.f3.close)
         self.f3.destroyed.connect(lambda: self.f0.ui.FRAMEClone.setEnabled(True))
-        self.f3.ui.BTNClone.clicked.connect(lambda: self.switch_to_ide("Clonado"))
+        self.clone_ws.bind(self.f3)
         self.f3.show()
         self.active_dialogs.append(self.f3)
 

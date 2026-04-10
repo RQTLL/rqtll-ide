@@ -1,0 +1,166 @@
+import os, sys, subprocess
+
+from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+proto_py_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "external",
+    "rqt2_api",
+    "py",
+)
+if proto_py_path not in sys.path:
+    sys.path.insert(0, proto_py_path)
+
+import clone_ws_pb2
+import clone_ws_pb2_grpc
+
+
+class CloneWorkspaceThread(QThread):
+    progress_received = Signal(str, float)
+    finished_received = Signal(bool, str)
+
+    def __init__(self, stub, request):
+        super().__init__()
+        self.stub = stub
+        self.request = request
+
+    def run(self):
+        try:
+            for response in self.stub.CloneWorkspace(self.request):
+                self.progress_received.emit(response.log_line, response.progress)
+                if response.completed:
+                    self.finished_received.emit(response.success, response.log_line)
+                    return
+
+            self.finished_received.emit(False, "Bad Backend")
+        except Exception as exc:
+            self.progress_received.emit(f"Error de RPC: {exc}", 0.0)
+            self.finished_received.emit(False, str(exc))
+
+
+class CloneWorkspaceController(QObject):
+    def __init__(self, root_controller, current_notify_id=None):
+        super().__init__()
+        self.root = root_controller
+        self.current_notify_id = current_notify_id
+        self.window = None
+        self.clone_stub = clone_ws_pb2_grpc.CloneWorkspaceServiceStub(self.root.channel)
+        self.clone_thread = None
+
+    def bind(self, window):
+        self.window = window
+
+        try:
+            self.window.ui.BTNClone.clicked.disconnect()
+        except Exception:
+            pass
+        self.window.ui.BTNClone.clicked.connect(self.clone_workspace)
+        try:
+            self.window.ui.BTNDir.clicked.disconnect()
+        except Exception:
+            pass
+        self.window.ui.BTNDir.clicked.connect(self.select_destination_dir)
+
+        try:
+            self.window.ui.EDITUri.textChanged.disconnect()
+        except Exception:
+            pass
+        self.window.ui.EDITUri.textChanged.connect(self._update_clone_button_state)
+        self._update_clone_button_state()
+
+    def _update_clone_button_state(self):
+        if self.window is None:
+            return
+
+        has_url = bool(self.window.ui.EDITUri.text().strip())
+        is_busy = self.clone_thread is not None and self.clone_thread.isRunning()
+        self.window.ui.BTNClone.setEnabled(has_url and not is_busy)
+
+        if has_url:
+            self.window.ui.BTNClone.setToolTip("")
+        else:
+            self.window.ui.BTNClone.setToolTip("Ingresa la URL del proyecto a clonar")
+
+    def select_destination_dir(self):
+        if self.window is None:
+            return
+
+        current_value = self.window.ui.EDITDir.text().strip()
+        base_dir = os.path.expanduser(current_value) if current_value else os.path.expanduser("~")
+
+        chosen_dir = QFileDialog.getExistingDirectory(
+            self.window,
+            "Selecciona el directorio de destino",
+            base_dir,
+        )
+        if not chosen_dir:
+            return
+
+        self.window.ui.EDITDir.setText(os.path.normpath(chosen_dir))
+
+    def clone_workspace(self):
+        if self.window is None:
+            return
+
+        repo_url = self.window.ui.EDITUri.text().strip()
+        if not repo_url:
+            return
+
+        destination_dir = self.window.ui.EDITDir.text().strip()
+        workspace_name = self.window.ui.EDITName.text().strip()
+
+        request = clone_ws_pb2.CloneWorkspaceRequest(
+            repository_url=repo_url,
+            destination_dir=os.path.expanduser(destination_dir) if destination_dir else "",
+            workspace_name=workspace_name,
+            branch="",
+            depth=0,
+        )
+
+        if self.clone_thread is not None and self.clone_thread.isRunning():
+            return
+
+        self.clone_thread = CloneWorkspaceThread(self.clone_stub, request)
+        self.clone_thread.progress_received.connect(self._on_clone_progress)
+        self.clone_thread.finished_received.connect(self._on_clone_finished)
+        self._set_busy(True)
+        self.window.closeEvent = lambda event: (self._set_busy(False), event.accept())
+        self.clone_thread.start()
+
+    def _set_busy(self, busy):
+        if self.window is None:
+            return
+
+        self.window.ui.BTNClone.setEnabled(not busy and bool(self.window.ui.EDITUri.text().strip()))
+        self.window.ui.BTNCancell.setEnabled(not busy)
+        self.window.ui.BTNDir.setEnabled(not busy)
+        self.window.ui.EDITUri.setEnabled(not busy)
+        self.window.ui.EDITDir.setEnabled(not busy)
+        self.window.ui.EDITName.setEnabled(not busy)
+
+    def _on_clone_progress(self, message, progress):
+        if self.window is None:
+            return
+
+        if message:
+            self.window.titlebar.setTitle(f"Clonando... {message})")
+
+    def _on_clone_finished(self, success, message):
+        if self.window is None:
+            return
+    
+        self._set_busy(False)
+        self._update_clone_button_state()
+
+        if success:
+            cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--icon', 'dialog-information',
+                   '--replace-id', self.current_notify_id.strip(),
+                   "Clonado completado", message or "El repositorio se clonó correctamente."]
+            subprocess.Popen(cmd)
+            self.root.home.switch_to_ide(message)
+        else:
+            cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--icon', 'dialog-error', 
+                   '--replace-id', self.current_notify_id.strip(),
+                   "Error al clonar", message or "Ocurrió un error durante el proceso de clonación."]
+            subprocess.Popen(cmd)

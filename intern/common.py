@@ -1,3 +1,10 @@
+import os
+import sys
+
+proto_py_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "external", "rqt2_api", "py")
+if proto_py_path not in sys.path:
+    sys.path.insert(0, proto_py_path)
+
 import packages_pb2
 from PySide6.QtCore import QThread, Signal
 

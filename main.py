@@ -1,4 +1,10 @@
 import sys, os, subprocess
+
+base_path = os.path.dirname(os.path.abspath(__file__))
+proto_py_path = os.path.join(base_path, "external", "rqt2_api", "py")
+if proto_py_path not in sys.path:
+    sys.path.insert(0, proto_py_path)
+
 import grpc
 import packages_pb2
 import packages_pb2_grpc
@@ -18,7 +24,6 @@ except Exception:
         def get_theme_manager():
             return None
 
-base_path = os.path.dirname(os.path.abspath(__file__))
 icon_dirs = [
     os.path.join(base_path, "external", "rqt2_components"),
     os.path.join(base_path, "external", "rqt2_components", "assets"),

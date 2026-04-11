@@ -1,5 +1,5 @@
 import os, webbrowser
-from PySide6.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 from PySide6.QtCore import Qt, QObject
 from external.rqt2_widgets.forms.f0_ui_main import Ui_Widget as Ui_F0
 from external.rqt2_widgets.forms.f1_ui_new_ws import Ui_Widget as Ui_F1
@@ -46,9 +46,51 @@ class HomeController(QObject):
             pass
         self.f1.ui.BTNCancell.clicked.connect(self.f1.close)
         self.f1.destroyed.connect(lambda: self.f0.ui.FRAMENew.setEnabled(True))
-        self.f1.ui.BTNMake.clicked.connect(lambda: self.switch_to_ide("Nuevo"))
+        self.f1.ui.BTNDir.clicked.connect(self._select_new_ws_base_dir)
+        self.f1.ui.BTNMake.clicked.connect(self._create_new_workspace)
+        if not self.f1.ui.EDITDir.text().strip():
+            self.f1.ui.EDITDir.setText(os.path.expanduser("~"))
         self.f1.show()
         self.active_dialogs.append(self.f1)
+
+    def _select_new_ws_base_dir(self):
+        if not hasattr(self, 'f1') or self.f1 is None:
+            return
+
+        current_dir = self.f1.ui.EDITDir.text().strip() or os.path.expanduser("~")
+        selected_dir = QFileDialog.getExistingDirectory(
+            self.f1,
+            "Seleccionar directorio base",
+            os.path.expanduser(current_dir),
+        )
+        if selected_dir:
+            self.f1.ui.EDITDir.setText(os.path.normpath(selected_dir))
+
+    def _create_new_workspace(self):
+        if not hasattr(self, 'f1') or self.f1 is None:
+            return
+
+        ws_name = self.f1.ui.EDITWSNew.text().strip()
+        if not ws_name:
+            self._show_workspace_error("Nombre requerido", "Debes ingresar un nombre para el nuevo espacio de trabajo.")
+            return
+
+        base_dir_raw = self.f1.ui.EDITDir.text().strip()
+        base_dir = os.path.expanduser(base_dir_raw) if base_dir_raw else os.path.expanduser("~")
+        workspace_path = os.path.normpath(os.path.join(base_dir, ws_name))
+
+        try:
+            os.makedirs(workspace_path, exist_ok=True)
+        except Exception as exc:
+            self._show_workspace_error("No se pudo crear el directorio", str(exc))
+            return
+
+        ok, message = self.clone_ws.set_current_target_dir(workspace_path)
+        if not ok:
+            self._show_workspace_error("Error al registrar el workspace", message)
+            return
+
+        self.switch_to_ide(workspace_path)
 
     def open_f3(self):
         self.f3 = DemoWindow(Ui_F3, title="Clonar espacio", 
@@ -68,7 +110,33 @@ class HomeController(QObject):
 
     def open_file_dialog(self):
         path = QFileDialog.getExistingDirectory(self.f0, "Cargar Espacio de Trabajo")
-        if path: self.switch_to_ide(path)
+        if not path:
+            return
+
+        ok, message = self.clone_ws.set_current_target_dir(path)
+        if ok:
+            self.switch_to_ide(path)
+            return
+
+        msg_box = QMessageBox(self.f0)
+        msg_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        msg_box.setIcon(QMessageBox.Icon.Critical)
+        msg_box.setWindowTitle("RQT2 | Error")
+        msg_box.setText("Error al cargar el espacio de trabajo")
+        msg_box.setInformativeText(message or "Ocurrió un error desconocido al intentar cargar el espacio de trabajo seleccionado.")
+        msg_box.setDefaultButton(msg_box.addButton("Aceptar", QMessageBox.ButtonRole.AcceptRole))
+        msg_box.exec()
+
+    def _show_workspace_error(self, title, details):
+        parent = self.f1 if hasattr(self, 'f1') and self.f1 is not None else self.f0
+        msg_box = QMessageBox(parent)
+        msg_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        msg_box.setIcon(QMessageBox.Icon.Critical)
+        msg_box.setWindowTitle("RQT2 | Error")
+        msg_box.setText(title)
+        msg_box.setInformativeText(details or "Ocurrió un error desconocido.")
+        msg_box.setDefaultButton(msg_box.addButton("Aceptar", QMessageBox.ButtonRole.AcceptRole))
+        msg_box.exec()
 
     def switch_to_ide(self, ws_path):
         for dialog in self.active_dialogs:

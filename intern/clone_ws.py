@@ -69,6 +69,18 @@ class CloneWorkspaceController(QObject):
         self.window.ui.EDITUri.textChanged.connect(self._update_clone_button_state)
         self._update_clone_button_state()
 
+    def set_current_target_dir(self, path):
+        normalized = os.path.expanduser(path.strip()) if path else ""
+        if not normalized:
+            return False, "Ruta vacía"
+
+        try:
+            request = clone_ws_pb2.SetCurrentTargetDirRequest(target_dir=normalized)
+            response = self.clone_stub.SetCurrentTargetDir(request)
+            return bool(response.ok), response.message
+        except Exception as exc:
+            return False, str(exc)
+
     def _update_clone_button_state(self):
         if self.window is None:
             return

@@ -7,12 +7,14 @@ from external.rqt2_widgets.forms.f3_ui_clone_ws import Ui_Widget as Ui_F3
 from external.rqt2_widgets.forms.ui_form import Ui_Widget as Ui_Form
 from external.rqt2_widgets.utils.base_window import DemoWindow
 from .clone_ws import CloneWorkspaceController
+from .new_ws import NewWorkspaceController
 
 class HomeController(QObject):
     def __init__(self, root_controller):
         super().__init__()
         self.root = root_controller
         self.clone_ws = CloneWorkspaceController(self.root, current_notify_id=self.root.current_notify_id)
+        self.new_ws = NewWorkspaceController(self.root, self.clone_ws, switch_to_ide_cb=self.switch_to_ide)
         self.active_dialogs = []
         
         self.f0 = DemoWindow(Ui_F0, title="RQT2 IDE", 
@@ -46,51 +48,11 @@ class HomeController(QObject):
             pass
         self.f1.ui.BTNCancell.clicked.connect(self.f1.close)
         self.f1.destroyed.connect(lambda: self.f0.ui.FRAMENew.setEnabled(True))
-        self.f1.ui.BTNDir.clicked.connect(self._select_new_ws_base_dir)
-        self.f1.ui.BTNMake.clicked.connect(self._create_new_workspace)
         if not self.f1.ui.EDITDir.text().strip():
             self.f1.ui.EDITDir.setText(os.path.expanduser("~"))
+        self.new_ws.bind(self.f1)
         self.f1.show()
         self.active_dialogs.append(self.f1)
-
-    def _select_new_ws_base_dir(self):
-        if not hasattr(self, 'f1') or self.f1 is None:
-            return
-
-        current_dir = self.f1.ui.EDITDir.text().strip() or os.path.expanduser("~")
-        selected_dir = QFileDialog.getExistingDirectory(
-            self.f1,
-            "Seleccionar directorio base",
-            os.path.expanduser(current_dir),
-        )
-        if selected_dir:
-            self.f1.ui.EDITDir.setText(os.path.normpath(selected_dir))
-
-    def _create_new_workspace(self):
-        if not hasattr(self, 'f1') or self.f1 is None:
-            return
-
-        ws_name = self.f1.ui.EDITWSNew.text().strip()
-        if not ws_name:
-            self._show_workspace_error("Nombre requerido", "Debes ingresar un nombre para el nuevo espacio de trabajo.")
-            return
-
-        base_dir_raw = self.f1.ui.EDITDir.text().strip()
-        base_dir = os.path.expanduser(base_dir_raw) if base_dir_raw else os.path.expanduser("~")
-        workspace_path = os.path.normpath(os.path.join(base_dir, ws_name))
-
-        try:
-            os.makedirs(workspace_path, exist_ok=True)
-        except Exception as exc:
-            self._show_workspace_error("No se pudo crear el directorio", str(exc))
-            return
-
-        ok, message = self.clone_ws.set_current_target_dir(workspace_path)
-        if not ok:
-            self._show_workspace_error("Error al registrar el workspace", message)
-            return
-
-        self.switch_to_ide(workspace_path)
 
     def open_f3(self):
         self.f3 = DemoWindow(Ui_F3, title="Clonar espacio", 

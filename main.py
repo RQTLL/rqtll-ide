@@ -68,15 +68,31 @@ class RQT2Root:
         try:
             request = packages_pb2.ListPackagesRequest(filter="ros-base")
             response_iter = self.package_stub.ListAvailablePackages(request)
-            first_pkg = next(response_iter)
-            distro = first_pkg.version if first_pkg.version else "Jazzy"
-            
-            title = "RQT2 IDE"
-            msg = f"Motor funcionando. ROS 2 {distro} listo."
-            icon = logo_path
-        except Exception:
+            try:
+                first_pkg = next(response_iter)
+                distro = first_pkg.version if first_pkg.version else "Jazzy"
+                if distro in ["Ninguna", "No detectada"]:
+                    title = "RQT2 IDE"
+                    msg = "Motor funcionando pero ROS 2 no está instalado."
+                    icon = logo_path
+                else:
+                    title = "RQT2 IDE"
+                    msg = f"Motor funcionando. ROS 2 {distro} listo."
+                    icon = logo_path
+            except StopIteration:
+                title = "RQT2 IDE"
+                msg = "Motor funcionando pero ROS 2 no está instalado."
+                icon = logo_path
+        except grpc.RpcError as e:
             title = "RQT2 Error"
-            msg = "Backend offline. Verifica el servidor de Rust."
+            if e.code() == grpc.StatusCode.UNAVAILABLE:
+                msg = "Motor no disponible. Verifica que rqt2.service esté funcionando. (systemctl status rqt2.service)"
+            else:
+                msg = f"Error de conexión con el backend: {e.details()}"
+            icon = "dialog-error"
+        except Exception as e:
+            title = "RQT2 Error"
+            msg = f"Error inesperado: {str(e)}"
             icon = "dialog-error"
 
         cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--print-id', '--icon', icon, title, msg]

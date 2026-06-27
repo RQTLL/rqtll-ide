@@ -13,7 +13,7 @@ class HomeController(QObject):
     def __init__(self, root_controller):
         super().__init__()
         self.root = root_controller
-        self.clone_ws = CloneWorkspaceController(self.root, current_notify_id=self.root.current_notify_id)
+        self.clone_ws = CloneWorkspaceController(self.root)
         self.new_ws = NewWorkspaceController(self.root, self.clone_ws, switch_to_ide_cb=self.switch_to_ide)
         self.active_dialogs = []
         

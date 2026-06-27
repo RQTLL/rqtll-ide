@@ -15,18 +15,32 @@ class PackageSearchThread(QThread):
         super().__init__()
         self.query = query
         self.stub = stub
+        self.call = None
+        self._is_cancelled = False
+
+    def cancel(self):
+        self._is_cancelled = True
+        if self.call:
+            try:
+                self.call.cancel()
+            except Exception:
+                pass
 
     def run(self):
         try:
             packages = []
             request = packages_pb2.ListPackagesRequest(filter=self.query)
-            for pkg in self.stub.ListAvailablePackages(request):
+            self.call = self.stub.ListAvailablePackages(request)
+            for pkg in self.call:
+                if self._is_cancelled:
+                    return
                 packages.append({
                     'name': pkg.name,
                     'installed': pkg.is_installed,
                     'pending': False
                 })
-            self.packages_received.emit(packages)
+            if not self._is_cancelled:
+                self.packages_received.emit(packages)
         except Exception:
             pass
 
@@ -37,11 +51,24 @@ class PackageLoader(QThread):
         super().__init__()
         self.filter_text = filter_text
         self.stub = stub
+        self.call = None
+        self._is_cancelled = False
+
+    def cancel(self):
+        self._is_cancelled = True
+        if self.call:
+            try:
+                self.call.cancel()
+            except Exception:
+                pass
 
     def run(self):
         try:
             request = packages_pb2.ListPackagesRequest(filter=self.filter_text)
-            for pkg in self.stub.ListAvailablePackages(request):
+            self.call = self.stub.ListAvailablePackages(request)
+            for pkg in self.call:
+                if self._is_cancelled:
+                    return
                 self.package_received.emit(pkg)
         except Exception:
             pass

@@ -103,8 +103,11 @@ class HomeController(QObject):
     def switch_to_ide(self, ws_path):
         for dialog in self.active_dialogs:
             if dialog:
-                if not dialog.isHidden(): 
-                    dialog.close()
+                try:
+                    if not dialog.isHidden(): 
+                        dialog.close()
+                except RuntimeError:
+                    pass
         
         self.f0.close()
         self.main_ide = DemoWindow(Ui_Form, title=f"RQT2 IDE / {os.path.basename(ws_path)}", 

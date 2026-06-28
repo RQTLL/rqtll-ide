@@ -1,4 +1,4 @@
-import os, sys, subprocess
+import os, sys, subprocess, time
 
 from PySide6.QtCore import QObject, QThread, Signal
 from PySide6.QtWidgets import QFileDialog, QMessageBox
@@ -24,32 +24,48 @@ class CloneWorkspaceThread(QThread):
         super().__init__()
         self.stub = stub
         self.request = request
+        self.call = None
+        self._is_cancelled = False
+
+    def cancel(self):
+        self._is_cancelled = True
+        if self.call:
+            try:
+                self.call.cancel()
+            except Exception:
+                pass
 
     def run(self):
         try:
-            for response in self.stub.CloneWorkspace(self.request):
+            self.call = self.stub.CloneWorkspace(self.request)
+            for response in self.call:
+                if self._is_cancelled:
+                    return
                 self.progress_received.emit(response.log_line, response.progress)
                 if response.completed:
                     self.finished_received.emit(response.success, response.log_line)
                     return
 
-            self.finished_received.emit(False, "Bad Backend")
+            if not self._is_cancelled:
+                self.finished_received.emit(False, "Bad Backend")
         except Exception as exc:
-            self.progress_received.emit(f"Error de RPC: {exc}", 0.0)
-            self.finished_received.emit(False, str(exc))
+            if not self._is_cancelled:
+                self.progress_received.emit(f"Error de RPC: {exc}", 0.0)
+                self.finished_received.emit(False, str(exc))
 
 
 class CloneWorkspaceController(QObject):
-    def __init__(self, root_controller, current_notify_id=None):
+    def __init__(self, root_controller):
         super().__init__()
         self.root = root_controller
-        self.current_notify_id = current_notify_id
         self.window = None
         self.clone_stub = clone_ws_pb2_grpc.CloneWorkspaceServiceStub(self.root.channel)
         self.clone_thread = None
+        self.last_notify_time = 0.0
 
     def bind(self, window):
         self.window = window
+        self.window.closeEvent = self._handle_close_event
 
         try:
             self.window.ui.BTNClone.clicked.disconnect()
@@ -137,8 +153,21 @@ class CloneWorkspaceController(QObject):
         self.clone_thread.progress_received.connect(self._on_clone_progress)
         self.clone_thread.finished_received.connect(self._on_clone_finished)
         self._set_busy(True)
-        self.window.closeEvent = lambda event: (self._set_busy(False), event.accept())
+        
+        self._send_notification(
+            "RQT2 Clonador",
+            "Iniciando clonación de repositorio...",
+            icon="dialog-information",
+            force=True
+        )
+        
         self.clone_thread.start()
+
+    def _handle_close_event(self, event):
+        if self.clone_thread and self.clone_thread.isRunning():
+            self.clone_thread.cancel()
+            self.clone_thread.wait()
+        event.accept()
 
     def _set_busy(self, busy):
         if self.window is None:
@@ -151,12 +180,33 @@ class CloneWorkspaceController(QObject):
         self.window.ui.EDITDir.setEnabled(not busy)
         self.window.ui.EDITName.setEnabled(not busy)
 
+    def _send_notification(self, title, msg, icon="dialog-information", progress=None, force=False):
+        now = time.time()
+        if not force and progress is not None:
+            if now - self.last_notify_time < 0.5:
+                return
+        self.last_notify_time = now
+
+        cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--print-id', '--icon', icon, title, msg]
+        if progress is not None:
+            cmd.extend(['-h', f'int:value:{int(progress)}'])
+        if self.root.current_notify_id:
+            cmd.extend(['--replace-id', self.root.current_notify_id.strip()])
+            
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+        self.root.current_notify_id, _ = process.communicate()
+
     def _on_clone_progress(self, message, progress):
         if self.window is None:
             return
 
         if message:
-            self.window.titlebar.setTitle(f"Clonando... {message})")
+            self._send_notification(
+                "Clonando Repositorio",
+                message,
+                icon="dialog-information",
+                progress=progress
+            )
 
     def _on_clone_finished(self, success, message):
         if self.window is None:
@@ -166,13 +216,19 @@ class CloneWorkspaceController(QObject):
         self._update_clone_button_state()
 
         if success:
-            cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--icon', 'dialog-information',
-                   '--replace-id', self.current_notify_id.strip(),
-                   "Clonado completado", message or "El repositorio se clonó correctamente."]
-            subprocess.Popen(cmd)
-            self.root.home.switch_to_ide(message)
+            self._send_notification(
+                "Clonado completado",
+                "El repositorio se clonó correctamente.",
+                icon="dialog-ok",
+                progress=100,
+                force=True
+            )
+            self.root.home.switch_to_ide(message.strip('"'))
         else:
-            cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--icon', 'dialog-error', 
-                   '--replace-id', self.current_notify_id.strip(),
-                   "Error al clonar", message or "Ocurrió un error durante el proceso de clonación."]
-            subprocess.Popen(cmd)
+            self._send_notification(
+                "Error al clonar",
+                message or "Ocurrió un error durante el proceso de clonación.",
+                icon="dialog-no",
+                progress=0,
+                force=True
+            )

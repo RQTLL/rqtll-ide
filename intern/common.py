@@ -11,10 +11,13 @@ from PySide6.QtCore import QThread, Signal
 class PackageSearchThread(QThread):
     packages_received = Signal(list)
 
-    def __init__(self, query, stub):
+    def __init__(self, query, stub, show_ros=True, show_python=True, show_rti=True):
         super().__init__()
         self.query = query
         self.stub = stub
+        self.show_ros = show_ros
+        self.show_python = show_python
+        self.show_rti = show_rti
         self.call = None
         self._is_cancelled = False
 
@@ -29,7 +32,12 @@ class PackageSearchThread(QThread):
     def run(self):
         try:
             packages = []
-            request = packages_pb2.ListPackagesRequest(filter=self.query)
+            request = packages_pb2.ListPackagesRequest(
+                filter=self.query,
+                show_ros=self.show_ros,
+                show_python=self.show_python,
+                show_rti=self.show_rti
+            )
             self.call = self.stub.ListAvailablePackages(request)
             for pkg in self.call:
                 if self._is_cancelled:
@@ -47,10 +55,13 @@ class PackageSearchThread(QThread):
 class PackageLoader(QThread):
     package_received = Signal(object)
 
-    def __init__(self, filter_text="", stub=None):
+    def __init__(self, filter_text="", stub=None, show_ros=True, show_python=True, show_rti=True):
         super().__init__()
         self.filter_text = filter_text
         self.stub = stub
+        self.show_ros = show_ros
+        self.show_python = show_python
+        self.show_rti = show_rti
         self.call = None
         self._is_cancelled = False
 
@@ -64,7 +75,12 @@ class PackageLoader(QThread):
 
     def run(self):
         try:
-            request = packages_pb2.ListPackagesRequest(filter=self.filter_text)
+            request = packages_pb2.ListPackagesRequest(
+                filter=self.filter_text,
+                show_ros=self.show_ros,
+                show_python=self.show_python,
+                show_rti=self.show_rti
+            )
             self.call = self.stub.ListAvailablePackages(request)
             for pkg in self.call:
                 if self._is_cancelled:

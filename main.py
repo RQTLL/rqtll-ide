@@ -8,6 +8,8 @@ if proto_py_path not in sys.path:
 import grpc
 import packages_pb2
 import packages_pb2_grpc
+import installer_pb2
+import installer_pb2_grpc
 
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QFontDatabase, QIcon, QGuiApplication
@@ -15,6 +17,7 @@ from PySide6.QtCore import Qt
 
 from intern.home import HomeController
 from intern.package_manager import PackageManagerController
+from intern.wizard import WizardController
 try:
     from external.rqt2_widgets.utils.theme_manager import get_theme_manager
 except Exception:
@@ -54,8 +57,32 @@ class RQT2Root:
         
         self.channel = grpc.insecure_channel('127.0.0.1:50051')
         self.package_stub = packages_pb2_grpc.PackageServiceStub(self.channel)
+        self.installer_stub = installer_pb2_grpc.ROSInstallerServiceStub(self.channel)
         
         self.show_startup_notification()
+        if not self.check_ros2_installed():
+            self.wizard = WizardController(self)
+            self.wizard.start()
+        else:
+            self.open_home()
+
+    def check_ros2_installed(self) -> bool:
+        try:
+            request = packages_pb2.ListPackagesRequest(filter="ros-core")
+            response_iter = self.package_stub.ListAvailablePackages(request)
+            try:
+                first_pkg = next(response_iter)
+                distro = first_pkg.version if first_pkg.version else "Jazzy"
+                print("first_pkg: ", first_pkg, "distro: ", distro)
+                if distro in ["Ninguna", "No detectada"]:
+                    return False
+                return True
+            except StopIteration:
+                return False
+        except Exception:
+            exit(1)
+
+    def open_home(self):
         self.home = HomeController(self)
         self.pkg_manager = PackageManagerController(self, self.home.f0)
 
@@ -77,7 +104,7 @@ class RQT2Root:
                     icon = logo_path
                 else:
                     title = "RQT2 IDE"
-                    msg = f"Motor funcionando. ROS 2 {distro} listo."
+                    msg = f"Motor funcionando. ROS 2 {distro.capitalize()} listo."
                     icon = logo_path
             except StopIteration:
                 title = "RQT2 IDE"

@@ -1,4 +1,5 @@
 import os
+import workspace_pb2
 
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import QFileDialog, QMessageBox
@@ -44,7 +45,44 @@ class NewWorkspaceController(QObject):
             pass
         self.window.ui.EDITDir.textChanged.connect(self._update_make_button_state)
 
+        try:
+            self.window.ui.BTNPKGNew.clicked.disconnect(self._on_pkg_added_or_changed)
+        except Exception:
+            pass
+        self.window.ui.BTNPKGNew.clicked.connect(self._on_pkg_added_or_changed)
+
+        try:
+            self.window.ui.EDITPKGNew.returnPressed.disconnect(self._on_pkg_added_or_changed)
+        except Exception:
+            pass
+        self.window.ui.EDITPKGNew.returnPressed.connect(self._on_pkg_added_or_changed)
+
         self._update_make_button_state()
+        self._on_pkg_added_or_changed()
+
+    def _on_pkg_added_or_changed(self):
+        if not self.window:
+            return
+        for i in range(self.window.ui.TABPKGNew.count()):
+            tab = self.window.ui.TABPKGNew.widget(i)
+            if not tab:
+                continue
+            cb = tab.findChild(QComboBox, "CBPKGAment")
+            group_node = tab.findChild(QWidget, "GROUPNode")
+            group_launch = tab.findChild(QWidget, "GROUPLaunch")
+            if cb and group_node and group_launch:
+                if not cb.property("rqt2_connected"):
+                    handler = self._make_ament_changed_handler(group_node, group_launch)
+                    cb.currentIndexChanged.connect(handler)
+                    cb.setProperty("rqt2_connected", True)
+                    handler(cb.currentIndex())
+
+    def _make_ament_changed_handler(self, group_node, group_launch):
+        def handler(index):
+            is_enabled = (index != 2)
+            group_node.setEnabled(is_enabled)
+            group_launch.setEnabled(is_enabled)
+        return handler
 
     def _update_make_button_state(self):
         if self.window is None:
@@ -131,22 +169,70 @@ class NewWorkspaceController(QObject):
                 del new_pkg[self.window.ui.TABPKGNew.tabText(pkg)]["maintainer"]
             if new_pkg[self.window.ui.TABPKGNew.tabText(pkg)]["dependencies"] == ['']:
                 del new_pkg[self.window.ui.TABPKGNew.tabText(pkg)]["dependencies"]
-                
-            if new_pkg[self.window.ui.TABPKGNew.tabText(pkg)]["type"] in ["Python (ament_python)", "C++ (ament_cmake)"]:
-                new_pkg[self.window.ui.TABPKGNew.tabText(pkg)]["type"] = new_pkg[self.window.ui.TABPKGNew.tabText(pkg)]["type"].split(' ')[0].lower()
 
-        # backend call to create the project
-        # ok, message = self.clone_ws...
-        """"
-        if not ok:
-            self._show_error(
-                "No se pudo registrar el directorio en backend.\n"
-                f"{message or 'Error desconocido'}"
-            )
+        try:
+            ws_req = workspace_pb2.CreateWorkspaceRequest(path=final_target_dir)
+            status = self.root.workspace_stub.CreateWorkspace(ws_req)
+            if not status.ok:
+                self._show_error(f"No se pudo crear el directorio del espacio de trabajo:\n{status.message}")
+                return
+        except Exception as e:
+            self._show_error(f"Error de comunicación gRPC al crear el espacio de trabajo: {e}")
             return
 
+        for pkg_name, pkg_data in new_pkg.items():
+            raw_type = pkg_data.get("type", "").lower()
+            build_type = raw_type.split("[")[1].replace("]","")
+
+            req_options = {
+                "description": pkg_data.get("description", ""),
+                "license": pkg_data.get("license", ""),
+                "maintainer-email": pkg_data.get("maintainer", {}).get("email", ""),
+                "maintainer-name": pkg_data.get("maintainer", {}).get("name", ""),
+                "destination-directory": os.path.join(final_target_dir, "src"),
+                "version": pkg_data.get("version", "0.0.1"),
+            }
+            deps = pkg_data.get("dependencies", [])
+            if deps:
+                req_options["dependencies"] = " ".join(deps)
+
+            try:
+                pkg_req = workspace_pb2.CreatePackageRequest(
+                    workspace_path=final_target_dir,
+                    name=pkg_name,
+                    build_type=build_type,
+                    options=req_options
+                )
+                status = self.root.workspace_stub.CreatePackage(pkg_req)
+                if not status.ok:
+                    self._show_error(f"No se pudo crear el paquete {pkg_name}:\n{status.message}")
+                    return
+            except Exception as e:
+                self._show_error(f"Error de comunicación gRPC al crear el paquete {pkg_name}: {e}")
+                return
+
+            # Register nodes and launchers if it is not ament_cargo
+            if build_type in ["ament_python", "ament_cmake"]:
+                nodes = pkg_data.get("nodes", [])
+                launchers = pkg_data.get("launchers", [])
+                try:
+                    nodes_req = workspace_pb2.CreateNodesAndLaunchersRequest(
+                        workspace_path=final_target_dir,
+                        package_name=pkg_name,
+                        nodes=nodes,
+                        launchers=launchers
+                    )
+                    status = self.root.workspace_stub.CreateNodesAndLaunchers(nodes_req)
+                    if not status.ok:
+                        self._show_error(f"No se pudo registrar los nodos/lanzadores del paquete {pkg_name}:\n{status.message}")
+                        return
+                except Exception as e:
+                    self._show_error(f"Error de comunicación gRPC al registrar nodos/lanzadores del paquete {pkg_name}: {e}")
+                    return
+
+        if self.window:
+            self.window.close()
         self.switch_to_ide_cb(final_target_dir)
-        """
 
     def _show_error(self, message):
         if self.window is None:

@@ -10,6 +10,8 @@ import packages_pb2
 import packages_pb2_grpc
 import installer_pb2
 import installer_pb2_grpc
+import workspace_pb2
+import workspace_pb2_grpc
 
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QFontDatabase, QIcon, QGuiApplication
@@ -58,6 +60,7 @@ class RQT2Root:
         self.channel = grpc.insecure_channel('127.0.0.1:50051')
         self.package_stub = packages_pb2_grpc.PackageServiceStub(self.channel)
         self.installer_stub = installer_pb2_grpc.ROSInstallerServiceStub(self.channel)
+        self.workspace_stub = workspace_pb2_grpc.WorkspaceServiceStub(self.channel)
         
         self.show_startup_notification()
         if not self.check_ros2_installed():
@@ -73,7 +76,6 @@ class RQT2Root:
             try:
                 first_pkg = next(response_iter)
                 distro = first_pkg.version if first_pkg.version else "Jazzy"
-                print("first_pkg: ", first_pkg, "distro: ", distro)
                 if distro in ["Ninguna", "No detectada"]:
                     return False
                 return True

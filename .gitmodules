@@ -1,9 +1,9 @@
-[submodule "external/rqt2_widgets"]
-	path = external/rqt2_widgets
-	url = https://github.com/RQT2/rqt2-widgets.git
-[submodule "external/rqt2_components"]
-	path = external/rqt2_components
-	url = https://github.com/RQT2/rqt2-components.git
-[submodule "external/rqt2_api"]
-	path = external/rqt2_api
-	url = https://github.com/RQT2/rqt2-api.git
+[submodule "external/rqtll_widgets"]
+	path = external/rqtll_widgets
+	url = https://github.com/RQTLL/rqtll-widgets.git
+[submodule "external/rqtll_components"]
+	path = external/rqtll_components
+	url = https://github.com/RQTLL/rqtll-components.git
+[submodule "external/rqtll_api"]
+	path = external/rqtll_api
+	url = https://github.com/RQTLL/rqtll-api.git

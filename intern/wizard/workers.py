@@ -45,7 +45,7 @@ class RepoSetupWorker(QThread):
                 return
         self.last_notify_time = now
 
-        cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--print-id', title, msg]
+        cmd = ['notify-send', '--app-name', 'RQTLL IDE', '--print-id', title, msg]
         if icon:
             cmd.extend(['--icon', icon])
         if progress is not None:

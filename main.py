@@ -1,7 +1,7 @@
 import sys, os, subprocess
 
 base_path = os.path.dirname(os.path.abspath(__file__))
-proto_py_path = os.path.join(base_path, "external", "rqt2_api", "py")
+proto_py_path = os.path.join(base_path, "external", "rqtll_api", "py")
 if proto_py_path not in sys.path:
     sys.path.insert(0, proto_py_path)
 
@@ -21,22 +21,22 @@ from intern.home import HomeController
 from intern.package_manager import PackageManagerController
 from intern.wizard import WizardController
 try:
-    from external.rqt2_widgets.utils.theme_manager import get_theme_manager
+    from external.rqtll_widgets.utils.theme_manager import get_theme_manager
 except Exception:
     try:
-        from rqt2_widgets.utils.theme_manager import get_theme_manager
+        from rqtll_widgets.utils.theme_manager import get_theme_manager
     except Exception:
         def get_theme_manager():
             return None
 
 icon_dirs = [
-    os.path.join(base_path, "external", "rqt2_components"),
-    os.path.join(base_path, "external", "rqt2_components", "assets"),
-    os.path.join(base_path, "external", "rqt2_components", "assets", "branding"),
-    os.path.join(base_path, "external", "rqt2_components", "assets", "icons"),
-    os.path.join(base_path, "external", "rqt2_components", "styles"),
-    os.path.join(base_path, "external", "rqt2_components", "styles", "themes"),
-    os.path.join(base_path, "external", "rqt2_widgets"),
+    os.path.join(base_path, "external", "rqtll_components"),
+    os.path.join(base_path, "external", "rqtll_components", "assets"),
+    os.path.join(base_path, "external", "rqtll_components", "assets", "branding"),
+    os.path.join(base_path, "external", "rqtll_components", "assets", "icons"),
+    os.path.join(base_path, "external", "rqtll_components", "styles"),
+    os.path.join(base_path, "external", "rqtll_components", "styles", "themes"),
+    os.path.join(base_path, "external", "rqtll_widgets"),
 ]
 
 def load_resources(app, components_path, theme="dark.qss"):
@@ -51,7 +51,7 @@ def load_resources(app, components_path, theme="dark.qss"):
         with open(qss_file, "r") as f:
             app.setStyleSheet(f.read())
 
-class RQT2Root:
+class RQTLLRoot:
     def __init__(self, theme="dark.qss"):
         self.theme = theme
         self.icon_dirs = icon_dirs
@@ -92,7 +92,7 @@ class RQT2Root:
         self.theme = theme
 
     def show_startup_notification(self):
-        logo_path = os.path.join(base_path, "external/rqt2_components/assets/branding/logo.svg")
+        logo_path = os.path.join(base_path, "external/rqtll_components/assets/branding/logo.svg")
         
         try:
             request = packages_pb2.ListPackagesRequest(filter="ros-base")
@@ -101,37 +101,37 @@ class RQT2Root:
                 first_pkg = next(response_iter)
                 distro = first_pkg.version if first_pkg.version else "Jazzy"
                 if distro in ["Ninguna", "No detectada"]:
-                    title = "RQT2 IDE"
+                    title = "RQTLL IDE"
                     msg = "Motor funcionando pero ROS 2 no está instalado."
                     icon = logo_path
                 else:
-                    title = "RQT2 IDE"
+                    title = "RQTLL IDE"
                     msg = f"Motor funcionando. ROS 2 {distro.capitalize()} listo."
                     icon = logo_path
             except StopIteration:
-                title = "RQT2 IDE"
+                title = "RQTLL IDE"
                 msg = "Motor funcionando pero ROS 2 no está instalado."
                 icon = logo_path
         except grpc.RpcError as e:
-            title = "RQT2 Error"
+            title = "RQTLL Error"
             if e.code() == grpc.StatusCode.UNAVAILABLE:
-                msg = "Motor no disponible. Verifica que rqt2.service esté funcionando. (systemctl status rqt2.service)"
+                msg = "Motor no disponible. Verifica que rqtll.service esté funcionando. (systemctl status rqtll.service)"
             else:
                 msg = f"Error de conexión con el backend: {e.details()}"
             icon = "dialog-error"
         except Exception as e:
-            title = "RQT2 Error"
+            title = "RQTLL Error"
             msg = f"Error inesperado: {str(e)}"
             icon = "dialog-error"
 
-        cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--print-id', '--icon', icon, title, msg]
+        cmd = ['notify-send', '--app-name', 'RQTLL IDE', '--print-id', '--icon', icon, title, msg]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
         self.current_notify_id, _ = process.communicate()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     theme = QGuiApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark and "dark.qss" or "light.qss"
-    components_path = os.path.join(os.path.dirname(__file__), "external/rqt2_components")
+    components_path = os.path.join(os.path.dirname(__file__), "external/rqtll_components")
     load_resources(app, components_path, theme)
 
     def _on_color_scheme_changed(*args, **kwargs):
@@ -140,7 +140,7 @@ if __name__ == "__main__":
         if new_theme != theme:
             load_resources(app, components_path, new_theme)
             theme = new_theme
-            if 'root' in globals() and isinstance(globals().get('root'), RQT2Root):
+            if 'root' in globals() and isinstance(globals().get('root'), RQTLLRoot):
                 globals().get('root').update_theme(new_theme)
             try:
                 tm = get_theme_manager()
@@ -152,5 +152,5 @@ if __name__ == "__main__":
         QGuiApplication.styleHints().colorSchemeChanged.connect(_on_color_scheme_changed)
     except Exception:
         pass
-    root = RQT2Root(theme)
+    root = RQTLLRoot(theme)
     sys.exit(app.exec())

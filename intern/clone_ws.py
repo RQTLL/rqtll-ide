@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QFileDialog, QMessageBox
 proto_py_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "external",
-    "rqt2_api",
+    "rqtll_api",
     "py",
 )
 if proto_py_path not in sys.path:
@@ -155,7 +155,7 @@ class CloneWorkspaceController(QObject):
         self._set_busy(True)
         
         self._send_notification(
-            "RQT2 Clonador",
+            "RQTLL Clonador",
             "Iniciando clonación de repositorio...",
             icon="dialog-information",
             force=True
@@ -187,7 +187,7 @@ class CloneWorkspaceController(QObject):
                 return
         self.last_notify_time = now
 
-        cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--print-id', '--icon', icon, title, msg]
+        cmd = ['notify-send', '--app-name', 'RQTLL IDE', '--print-id', '--icon', icon, title, msg]
         if progress is not None:
             cmd.extend(['-h', f'int:value:{int(progress)}'])
         if self.root.current_notify_id:

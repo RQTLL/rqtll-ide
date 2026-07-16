@@ -1,18 +1,18 @@
 import os
 from PySide6.QtCore import Qt, QObject, QTimer, QModelIndex
 from PySide6.QtWidgets import QApplication, QMessageBox
-from external.rqt2_widgets.utils.base_window import DemoWindow
+from external.rqtll_widgets.utils.base_window import DemoWindow
 
 import grpc
 import installer_pb2
 from ..common import PackageSearchThread, PackageLoader, PackageInstaller
 from .workers import PackageListWorker, RepoSetupWorker, EnvInstallWorker, ConfigureEnvWorker
 
-from external.rqt2_widgets.forms.f5_ui_wizard_init import Ui_Widget as Ui_WizInit
-from external.rqt2_widgets.forms.f6_ui_wizard_opt import Ui_Widget as Ui_WizOpt
-from external.rqt2_widgets.forms.f7_ui_wizard_install_config import Ui_Widget as Ui_WizConfig
-from external.rqt2_widgets.forms.f8_ui_wizard_installed import Ui_Widget as Ui_WizProgress
-from external.rqt2_widgets.forms.f9_ui_wizard_close import Ui_Widget as Ui_WizClose
+from external.rqtll_widgets.forms.f5_ui_wizard_init import Ui_Widget as Ui_WizInit
+from external.rqtll_widgets.forms.f6_ui_wizard_opt import Ui_Widget as Ui_WizOpt
+from external.rqtll_widgets.forms.f7_ui_wizard_install_config import Ui_Widget as Ui_WizConfig
+from external.rqtll_widgets.forms.f8_ui_wizard_installed import Ui_Widget as Ui_WizProgress
+from external.rqtll_widgets.forms.f9_ui_wizard_close import Ui_Widget as Ui_WizClose
 
 class WizardController(QObject):
     def __init__(self, root_controller):
@@ -20,11 +20,11 @@ class WizardController(QObject):
         self.root = root_controller
         self.current_window = None
         self.steps = [
-            (Ui_WizInit, "RQT2 IDE / Asistente de Instalación"),
-            (Ui_WizOpt, "RQT2 IDE / Opciones de Instalación"),
-            (Ui_WizConfig, "RQT2 IDE / Versión de ROS2"),
-            (Ui_WizProgress, "RQT2 IDE / Progreso de Instalación"),
-            (Ui_WizClose, "RQT2 IDE / Finalizar Instalación")
+            (Ui_WizInit, "RQTLL IDE / Asistente de Instalación"),
+            (Ui_WizOpt, "RQTLL IDE / Opciones de Instalación"),
+            (Ui_WizConfig, "RQTLL IDE / Versión de ROS2"),
+            (Ui_WizProgress, "RQTLL IDE / Progreso de Instalación"),
+            (Ui_WizClose, "RQTLL IDE / Finalizar Instalación")
         ]
         self.current_step_idx = 0
         self.search_timer = QTimer()
@@ -108,7 +108,7 @@ class WizardController(QObject):
                     msg_box = QMessageBox(self.current_window)
                     msg_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
                     msg_box.setIcon(QMessageBox.Icon.Warning)
-                    msg_box.setWindowTitle("RQT2 | Confirmación")
+                    msg_box.setWindowTitle("RQTLL | Confirmación")
                     msg_box.setText("Se agregarán los repositorios de ROS2")
                     msg_box.setInformativeText("Esta acción requiere permisos de administrador para configurar las fuentes de apt.")
                     
@@ -141,7 +141,7 @@ class WizardController(QObject):
                     msg_box = QMessageBox(self.current_window)
                     msg_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
                     msg_box.setIcon(QMessageBox.Icon.Warning)
-                    msg_box.setWindowTitle("RQT2 | Advertencia")
+                    msg_box.setWindowTitle("RQTLL | Advertencia")
                     msg_box.setText("El ROS_DOMAIN_ID configurado es 0.")
                     msg_box.setInformativeText("Un dominio 0 es el valor predeterminado y puede causar interferencias si hay otros dispositivos ROS 2 en la misma red.\n\n¿Desea continuar?")
                     
@@ -195,7 +195,7 @@ class WizardController(QObject):
             error_box = QMessageBox(self.current_window)
             error_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
             error_box.setIcon(QMessageBox.Icon.Critical)
-            error_box.setWindowTitle("RQT2 | Error")
+            error_box.setWindowTitle("RQTLL | Error")
             error_box.setText("No se pudieron configurar los repositorios")
             error_box.setInformativeText(error_msg)
             error_box.addButton("Aceptar", QMessageBox.ButtonRole.AcceptRole)
@@ -259,8 +259,8 @@ class WizardController(QObject):
     def _on_packages_loaded(self, packages):
         import re
         from PySide6.QtCore import QCoreApplication
-        from external.rqt2_widgets.utils.frame_option_button import FrameOptionButtonWidget
-        from external.rqt2_widgets.utils.icon_loader import _resolve_icon
+        from external.rqtll_widgets.utils.frame_option_button import FrameOptionButtonWidget
+        from external.rqtll_widgets.utils.icon_loader import _resolve_icon
         
         ui = self.current_window.ui
         pattern = re.compile(r"^ros-(?P<distro>[a-z]+)-(?P<type>ros-core|desktop|desktop-full)$")
@@ -628,7 +628,7 @@ class WizardController(QObject):
             error_box = QMessageBox(self.current_window)
             error_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
             error_box.setIcon(QMessageBox.Icon.Critical)
-            error_box.setWindowTitle("RQT2 | Error")
+            error_box.setWindowTitle("RQTLL | Error")
             error_box.setText("No se pudo completar la instalación")
             error_box.setInformativeText(error_msg if error_msg else "Error desconocido durante la instalación del entorno.")
             error_box.addButton("Aceptar", QMessageBox.ButtonRole.AcceptRole)
@@ -656,7 +656,7 @@ class WizardController(QObject):
             error_box = QMessageBox(self.current_window)
             error_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
             error_box.setIcon(QMessageBox.Icon.Critical)
-            error_box.setWindowTitle("RQT2 | Error")
+            error_box.setWindowTitle("RQTLL | Error")
             error_box.setText("No se pudo aplicar la configuración")
             error_box.setInformativeText(error_msg if error_msg else "Error desconocido al configurar la shell.")
             error_box.addButton("Aceptar", QMessageBox.ButtonRole.AcceptRole)
@@ -666,7 +666,7 @@ class WizardController(QObject):
         try:
             ui = self.current_window.ui
             icon_dirs = self.root.icon_dirs
-            from external.rqt2_widgets.utils.icon_loader import _resolve_icon
+            from external.rqtll_widgets.utils.icon_loader import _resolve_icon
             logo_path = _resolve_icon(icon_dirs, "symbolic-color.svg")
             if not logo_path or not os.path.exists(logo_path):
                 return

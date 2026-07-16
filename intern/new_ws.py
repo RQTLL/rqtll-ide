@@ -71,10 +71,10 @@ class NewWorkspaceController(QObject):
             group_node = tab.findChild(QWidget, "GROUPNode")
             group_launch = tab.findChild(QWidget, "GROUPLaunch")
             if cb and group_node and group_launch:
-                if not cb.property("rqt2_connected"):
+                if not cb.property("rqtll_connected"):
                     handler = self._make_ament_changed_handler(group_node, group_launch)
                     cb.currentIndexChanged.connect(handler)
-                    cb.setProperty("rqt2_connected", True)
+                    cb.setProperty("rqtll_connected", True)
                     handler(cb.currentIndex())
 
     def _make_ament_changed_handler(self, group_node, group_launch):
@@ -239,7 +239,7 @@ class NewWorkspaceController(QObject):
             return
 
         msg_box = QMessageBox(self.window)
-        msg_box.setWindowTitle("RQT2 | Error")
+        msg_box.setWindowTitle("RQTLL | Error")
         msg_box.setIcon(QMessageBox.Icon.Critical)
         msg_box.setText("No se pudo crear el espacio de trabajo")
         msg_box.setInformativeText(message)

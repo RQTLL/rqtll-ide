@@ -2,8 +2,8 @@ import subprocess
 import time
 from PySide6.QtWidgets import QMessageBox
 from PySide6.QtCore import Qt, QTimer, QObject, QModelIndex
-from external.rqt2_widgets.forms.f4_ui_package_manager import Ui_Widget as Ui_F4
-from external.rqt2_widgets.utils.base_window import DemoWindow
+from external.rqtll_widgets.forms.f4_ui_package_manager import Ui_Widget as Ui_F4
+from external.rqtll_widgets.utils.base_window import DemoWindow
 
 from .common import PackageSearchThread, PackageLoader, PackageInstaller
 
@@ -26,7 +26,7 @@ class PackageManagerController(QObject):
         if self.trigger_button: 
             self.trigger_button.setEnabled(False)
 
-        self.f4 = DemoWindow(Ui_F4, title="RQT2 IDE / Gestor de Dependencias", 
+        self.f4 = DemoWindow(Ui_F4, title="RQTLL IDE / Gestor de Dependencias", 
                              icon_dirs=self.root.icon_dirs, parent=self.parent_win, 
                              theme=self.root.theme)
         self.f4.setAttribute(Qt.WA_DeleteOnClose)
@@ -87,7 +87,7 @@ class PackageManagerController(QObject):
                 return
         self.last_notify_time = now
 
-        cmd = ['notify-send', '--app-name', 'RQT2 IDE', '--print-id', title, msg]
+        cmd = ['notify-send', '--app-name', 'RQTLL IDE', '--print-id', title, msg]
         if icon: cmd.extend(['--icon', icon])
         if progress is not None:
             cmd.extend(['-h', f'int:value:{int(progress)}'])
@@ -182,7 +182,7 @@ class PackageManagerController(QObject):
         self.last_install_success = False
         
         icon = "edit-delete" if is_un else "system-software-install"
-        self._send_dynamic_notification("RQT2 Gestor", f"Procesando {pkg_name}...", icon=icon, force=True)
+        self._send_dynamic_notification("RQTLL Gestor", f"Procesando {pkg_name}...", icon=icon, force=True)
 
         self.installer_thread = PackageInstaller(pkg_name, self.root.package_stub)
         self.installer_thread.log_received.connect(self._update_logs)
@@ -324,12 +324,12 @@ class PackageManagerController(QObject):
         self.f4.ui.EDITSearch.setEnabled(not busy)
 
     def _confirm_action(self, name):
-        """Diálogo de confirmación con estilo RQT2."""
+        """Diálogo de confirmación con estilo RQTLL."""
         msg_box = QMessageBox(self.f4)
         msg_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         
         msg_box.setIcon(QMessageBox.Icon.Warning)
-        msg_box.setWindowTitle("RQT2 | Confirmación")
+        msg_box.setWindowTitle("RQTLL | Confirmación")
         msg_box.setText(f"¿Confirmas la eliminación de {name}?")
         msg_box.setInformativeText("Esta acción puede afectar el funcionamiento de otros programas.")
         

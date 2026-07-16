@@ -1,11 +1,11 @@
 import os, webbrowser
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 from PySide6.QtCore import Qt, QObject
-from external.rqt2_widgets.forms.f0_ui_main import Ui_Widget as Ui_F0
-from external.rqt2_widgets.forms.f1_ui_new_ws import Ui_Widget as Ui_F1
-from external.rqt2_widgets.forms.f3_ui_clone_ws import Ui_Widget as Ui_F3
-from external.rqt2_widgets.forms.ui_form import Ui_Widget as Ui_Form
-from external.rqt2_widgets.utils.base_window import DemoWindow
+from external.rqtll_widgets.forms.f0_ui_main import Ui_Widget as Ui_F0
+from external.rqtll_widgets.forms.f1_ui_new_ws import Ui_Widget as Ui_F1
+from external.rqtll_widgets.forms.f3_ui_clone_ws import Ui_Widget as Ui_F3
+from external.rqtll_widgets.forms.ui_form import Ui_Widget as Ui_Form
+from external.rqtll_widgets.utils.base_window import DemoWindow
 from .clone_ws import CloneWorkspaceController
 from .new_ws import NewWorkspaceController
 
@@ -17,7 +17,7 @@ class HomeController(QObject):
         self.new_ws = NewWorkspaceController(self.root, self.clone_ws, switch_to_ide_cb=self.switch_to_ide)
         self.active_dialogs = []
         
-        self.f0 = DemoWindow(Ui_F0, title="RQT2 IDE", 
+        self.f0 = DemoWindow(Ui_F0, title="RQTLL IDE", 
                              icon_dirs=self.root.icon_dirs, 
                              theme=self.root.theme)
         self._setup_connections()
@@ -83,7 +83,7 @@ class HomeController(QObject):
         msg_box = QMessageBox(self.f0)
         msg_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         msg_box.setIcon(QMessageBox.Icon.Critical)
-        msg_box.setWindowTitle("RQT2 | Error")
+        msg_box.setWindowTitle("RQTLL | Error")
         msg_box.setText("Error al cargar el espacio de trabajo")
         msg_box.setInformativeText(message or "Ocurrió un error desconocido al intentar cargar el espacio de trabajo seleccionado.")
         msg_box.setDefaultButton(msg_box.addButton("Aceptar", QMessageBox.ButtonRole.AcceptRole))
@@ -94,7 +94,7 @@ class HomeController(QObject):
         msg_box = QMessageBox(parent)
         msg_box.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         msg_box.setIcon(QMessageBox.Icon.Critical)
-        msg_box.setWindowTitle("RQT2 | Error")
+        msg_box.setWindowTitle("RQTLL | Error")
         msg_box.setText(title)
         msg_box.setInformativeText(details or "Ocurrió un error desconocido.")
         msg_box.setDefaultButton(msg_box.addButton("Aceptar", QMessageBox.ButtonRole.AcceptRole))
@@ -110,7 +110,7 @@ class HomeController(QObject):
                     pass
         
         self.f0.close()
-        self.main_ide = DemoWindow(Ui_Form, title=f"RQT2 IDE / {os.path.basename(ws_path)}", 
+        self.main_ide = DemoWindow(Ui_Form, title=f"RQTLL IDE / {os.path.basename(ws_path)}", 
                                    icon_dirs=self.root.icon_dirs, 
                                    show_daemon=True, show_tab=True, theme=self.root.theme)
         try:

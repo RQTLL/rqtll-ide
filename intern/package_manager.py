@@ -20,6 +20,43 @@ class PackageManagerController(QObject):
         self.search_timer.setSingleShot(True)
         self.search_timer.timeout.connect(self._do_search)
         self.pending_packages = {}
+        self.trigger_button = None
+
+    def bind(self, window):
+        self.f4 = window
+        
+        self.safe_disconnect(self.f4.ui.BTNCancell)
+        self.safe_disconnect(self.f4.ui.BTNApply)
+        self.safe_disconnect(self.f4.ui.BTNAccept)
+        self.f4.ui.BTNCancell.clicked.connect(self.f4.close)
+        self.f4.ui.EDITSearch.textChanged.connect(self.on_search_changed)
+        self.f4.ui.pkg_view.clicked.connect(self._on_table_clicked)
+        self.f4.ui.BTNAccept.clicked.connect(self._on_accept_packages)
+        self.f4.ui.BTNApply.clicked.connect(self._on_apply_packages)
+        
+        self.f4.destroyed.connect(self._on_window_destroyed)
+        self.f4.closeEvent = self._handle_close_event
+
+        try:
+            self.f4.ui.CBOPT1Search.stateChanged.connect(lambda: self.on_search_changed(""))
+            self.f4.ui.CBOPT2Search.stateChanged.connect(lambda: self.on_search_changed(""))
+            self.f4.ui.CBRti.stateChanged.connect(lambda: self.on_search_changed(""))
+        except Exception:
+            pass
+
+        self.f4.ui.EDITSearch.setEnabled(False)
+        self.f4.ui.EDITSearch.setPlaceholderText("Cargando lista de ROS 2...")
+
+        self.loader = PackageLoader(
+            filter_text="",
+            stub=self.root.package_stub,
+            show_ros=self.f4.ui.CBOPT1Search.isChecked(),
+            show_python=self.f4.ui.CBOPT2Search.isChecked(),
+            show_rti=self.f4.ui.CBRti.isChecked()
+        )
+        self.loader.package_received.connect(self.add_pkg_to_ui)
+        self.loader.finished.connect(self._on_initial_load_finished)
+        self.loader.start()
 
     def open(self, trigger_button=None):
         self.trigger_button = trigger_button

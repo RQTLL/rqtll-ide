@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QObject
 from external.rqtll_widgets.forms.f0_ui_main import Ui_Widget as Ui_F0
 from external.rqtll_widgets.forms.f1_ui_new_ws import Ui_Widget as Ui_F1
 from external.rqtll_widgets.forms.f3_ui_clone_ws import Ui_Widget as Ui_F3
-from external.rqtll_widgets.forms.ui_form import Ui_Widget as Ui_Form
+from external.rqtll_widgets.forms.g1_ui_text_editor import Ui_Widget as Ui_Form
 from external.rqtll_widgets.utils.base_window import DemoWindow
 from .clone_ws import CloneWorkspaceController
 from .new_ws import NewWorkspaceController
@@ -110,11 +110,6 @@ class HomeController(QObject):
                     pass
         
         self.f0.close()
-        self.main_ide = DemoWindow(Ui_Form, title=f"RQTLL IDE / {os.path.basename(ws_path)}", 
-                                   icon_dirs=self.root.icon_dirs, 
-                                   show_daemon=True, show_tab=True, theme=self.root.theme)
-        try:
-            self.main_ide.uiReinitialized.connect(lambda: None)
-        except Exception:
-            pass
-        self.main_ide.show()
+        from .ide import IDEController
+        self.ide = IDEController(self.root, ws_path)
+        self.ide.start()

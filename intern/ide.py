@@ -29,30 +29,30 @@ class IDEController(QObject):
         
         # Instantiate sub-controllers
         self.controllers = {
-            "code": CodeEditorController(self),
-            "launch": CompilerController(self),
-            "teleop": TwistController(self),
-            "ssh": SshController(self),
-            "3d": RvizLauncherController(self),
-            "emulator": GzLauncherController(self),
-            "widgets": RqtLauncherController(self),
-            "package": PackageManagerController(self.root, None),
+            "Editor": CodeEditorController(self),
+            "Lanzador": CompilerController(self),
+            "Control": TwistController(self),
+            "SSH": SshController(self),
+            "RViz2": RvizLauncherController(self),
+            "Gazebo": GzLauncherController(self),
+            "rqt": RqtLauncherController(self),
+            "Gestor de paquetes": PackageManagerController(self.root, None),
         }
 
         # Mapping targets to UI form classes
         self.target_forms = {
-            "code": Ui_G1,
-            "launch": Ui_G2,
-            "teleop": Ui_G3,
-            "ssh": Ui_G4,
-            "3d": Ui_G5,
-            "emulator": Ui_G6,
-            "widgets": Ui_G7,
-            "package": Ui_G8,
+            "Editor": Ui_G1,
+            "Lanzador": Ui_G2,
+            "Control": Ui_G3,
+            "SSH": Ui_G4,
+            "RViz2": Ui_G5,
+            "Gazebo": Ui_G6,
+            "rqt": Ui_G7,
+            "Gestor de paquetes": Ui_G8,
         }
 
     def start(self):
-        self.switch_view("code")
+        self.switch_view("Editor")
 
     def switch_view(self, target):
         if target == self.current_target:
@@ -65,35 +65,29 @@ class IDEController(QObject):
         ui_class = self.target_forms[target]
         controller = self.controllers[target]
 
-        # Save current window geometry if available
         pos = None
         size = None
         if self.current_window:
             pos = self.current_window.pos()
             size = self.current_window.size()
 
-        # Create new view window
-        title = f"RQTLL IDE / {os.path.basename(self.ws_path)}"
+        title = f"RQTLL IDE | {target} / {os.path.basename(self.ws_path)}"
         new_window = DemoWindow(ui_class, title=title, 
                                 icon_dirs=self.root.icon_dirs, 
-                                show_daemon=True, show_tab=True, 
+                                show_daemon=True, show_tab=False, 
                                 theme=self.root.theme)
         
-        # Connect navigation buttons in the new window
         self._bind_navigation(new_window)
 
-        # Bind controller functionality to the new view
         if hasattr(controller, "bind"):
             controller.bind(new_window)
 
-        # Position and show new window
         if pos and size:
             new_window.move(pos)
             new_window.resize(size)
         
         new_window.show()
 
-        # Close and clean up old window
         if self.current_window:
             self.current_window.close()
 
@@ -103,14 +97,14 @@ class IDEController(QObject):
     def _bind_navigation(self, window):
         ui = window.ui
         try:
-            ui.nav.code.clicked.connect(lambda: self.switch_view("code"))
-            ui.nav.launch.clicked.connect(lambda: self.switch_view("launch"))
+            ui.nav.code.clicked.connect(lambda: self.switch_view("Editor"))
+            ui.nav.launch.clicked.connect(lambda: self.switch_view("Lanzador"))
             #ui.nav.graph.clicked.connect(lambda: self.switch_view("nodes"))
-            ui.nav.teleop.clicked.connect(lambda: self.switch_view("teleop"))
-            ui.nav.ssh.clicked.connect(lambda: self.switch_view("ssh"))
-            ui.nav.viz.clicked.connect(lambda: self.switch_view("3d"))
-            ui.nav.sim.clicked.connect(lambda: self.switch_view("emulator"))
-            ui.nav.widgets.clicked.connect(lambda: self.switch_view("widgets"))
-            ui.nav.packages.clicked.connect(lambda: self.switch_view("package"))
+            ui.nav.teleop.clicked.connect(lambda: self.switch_view("Control"))
+            ui.nav.ssh.clicked.connect(lambda: self.switch_view("SSH"))
+            ui.nav.viz.clicked.connect(lambda: self.switch_view("RViz2"))
+            ui.nav.sim.clicked.connect(lambda: self.switch_view("Gazebo"))
+            ui.nav.widgets.clicked.connect(lambda: self.switch_view("rqt"))
+            ui.nav.packages.clicked.connect(lambda: self.switch_view("Gestor de paquetes"))
         except AttributeError as e:
             print(f"Error binding navigation: {e}")

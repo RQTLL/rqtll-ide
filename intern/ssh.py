@@ -1,7 +1,7 @@
 import os, subprocess, re
-from PySide6.QtCore import QObject, QSize, QThread, Signal, Qt
+from PySide6.QtCore import QObject, QSize, QThread, Signal, Qt, QTimer
 from PySide6.QtWidgets import QWidget, QGridLayout, QHBoxLayout, QFrame, QVBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox, QComboBox, QSpacerItem, QSizePolicy
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QTextCursor
 from external.rqtll_widgets.forms.g4_ui_ssh import Ui_Widget as Ui_G4
 
 import types_pb2
@@ -206,12 +206,14 @@ class SshController(QObject):
         self.ui.is_connected = False
         self.ui.tab_page = self.tab_widget.widget(0)
         self.ui.session_id = f"{self.ide.ws_path}_ssh_0"
-        self.ui.terminal = VirtualTerminal(rows=36, cols=120)
+        self.ui.terminal = VirtualTerminal(rows=1000, cols=100)
         self.ui.textEdit.keyPressEvent = lambda event: self.handle_keypress(event, self.ui)
         self.tabs.append(self.ui)
         
         self.ui.BTNConnect.clicked.connect(lambda: self.on_connect_clicked(self.ui))
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
+        
+        self.setup_refresh_timer(self.ui)
 
         # Restore active sessions from backend
         self.restore_active_sessions()
@@ -393,13 +395,33 @@ class SshController(QObject):
                 
             self.tab_widget.setTabText(tab_idx, "+")
 
+    def setup_refresh_timer(self, ui_inst):
+        ui_inst.refresh_timer = QTimer(self)
+        ui_inst.refresh_timer.setSingleShot(True)
+        ui_inst.refresh_timer.timeout.connect(lambda u=ui_inst: self.refresh_terminal_view(u))
+        ui_inst.pending_update = False
+
     def append_to_terminal(self, ui_inst, text):
         ui_inst.terminal.write(text)
+        if not getattr(ui_inst, "pending_update", False):
+            ui_inst.pending_update = True
+            ui_inst.refresh_timer.start(30)
+
+    def refresh_terminal_view(self, ui_inst):
+        ui_inst.pending_update = False
         ui_inst.textEdit.setPlainText(ui_inst.terminal.get_text())
+        
+        cursor = ui_inst.textEdit.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        ui_inst.textEdit.setTextCursor(cursor)
+        
         scrollbar = ui_inst.textEdit.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
     def on_session_finished(self, ui_inst):
+        if getattr(ui_inst, "pending_update", False):
+            ui_inst.refresh_timer.stop()
+            self.refresh_terminal_view(ui_inst)
         if ui_inst.is_connected:
             cmd = ['notify-send', '--app-name', 'RQTLL IDE', '--print-id',
                     '--icon', "edit-delete",
@@ -431,6 +453,8 @@ class SshController(QObject):
                 text = "\x1b[C"
             elif key == Qt.Key_Left:
                 text = "\x1b[D"
+            elif key == Qt.Key_Delete:
+                text = "\x1b[3~"
             else:
                 return
 
@@ -475,8 +499,10 @@ class SshController(QObject):
         ui_inst.is_connected = False
         ui_inst.tab_page = tab_widget
         ui_inst.session_id = f"{self.ide.ws_path}_ssh_{index}"
-        ui_inst.terminal = VirtualTerminal(rows=36, cols=120)
+        ui_inst.terminal = VirtualTerminal(rows=1000, cols=100)
         ui_inst.textEdit.keyPressEvent = lambda event: self.handle_keypress(event, ui_inst)
         self.tabs.append(ui_inst)
+        
+        self.setup_refresh_timer(ui_inst)
         
         ui_inst.BTNConnect.clicked.connect(lambda: self.on_connect_clicked(ui_inst))

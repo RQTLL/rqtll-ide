@@ -203,12 +203,21 @@ class SshController(QObject):
         self.setup_terminal_font(self.ui.textEdit)
         self.show_text_edit(self.ui, False)
         
+        # Stop any active threads from the previous window binding
+        if hasattr(self, "tabs") and self.tabs:
+            for ui_inst in self.tabs:
+                if ui_inst and hasattr(ui_inst, "thread") and ui_inst.thread:
+                    try:
+                        ui_inst.thread.stop()
+                    except Exception:
+                        pass
+
         self.ui.is_connected = False
         self.ui.tab_page = self.tab_widget.widget(0)
         self.ui.session_id = f"{self.ide.ws_path}_ssh_0"
         self.ui.terminal = VirtualTerminal(rows=1000, cols=100)
         self.ui.textEdit.keyPressEvent = lambda event: self.handle_keypress(event, self.ui)
-        self.tabs.append(self.ui)
+        self.tabs = [self.ui]
         
         self.ui.BTNConnect.clicked.connect(lambda: self.on_connect_clicked(self.ui))
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
@@ -300,10 +309,16 @@ class SshController(QObject):
             ui_inst.spacer_widget.show()
 
     def get_display_name(self, ui_inst, idx):
-        return ui_inst.EDITServer.text().strip() or f"Conexión {idx}"
+        try:
+            return ui_inst.EDITServer.text().strip() or f"Conexión {idx}"
+        except Exception as e:
+            return f"Conexión {idx}"
 
     def on_connect_clicked(self, ui_inst):
-        tab_idx = self.tab_widget.indexOf(ui_inst.tab_page)
+        try:
+            tab_idx = self.tab_widget.indexOf(ui_inst.tab_page)
+        except Exception as e:
+            return
         if tab_idx == -1:
             return
 
@@ -392,6 +407,8 @@ class SshController(QObject):
             last_idx = self.tab_widget.count() - 1
             if last_idx >= 0 and self.tab_widget.tabText(last_idx) == "+":
                 self.tab_widget.removeTab(last_idx)
+                if last_idx < len(self.tabs):
+                    self.tabs[last_idx] = None
                 
             self.tab_widget.setTabText(tab_idx, "+")
 
@@ -501,7 +518,9 @@ class SshController(QObject):
         ui_inst.session_id = f"{self.ide.ws_path}_ssh_{index}"
         ui_inst.terminal = VirtualTerminal(rows=1000, cols=100)
         ui_inst.textEdit.keyPressEvent = lambda event: self.handle_keypress(event, ui_inst)
-        self.tabs.append(ui_inst)
+        while len(self.tabs) <= index:
+            self.tabs.append(None)
+        self.tabs[index] = ui_inst
         
         self.setup_refresh_timer(ui_inst)
         

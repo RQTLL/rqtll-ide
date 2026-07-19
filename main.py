@@ -12,6 +12,8 @@ import installer_pb2
 import installer_pb2_grpc
 import workspace_pb2
 import workspace_pb2_grpc
+import interactive_execution_pb2
+import interactive_execution_pb2_grpc
 
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QFontDatabase, QIcon, QGuiApplication
@@ -61,6 +63,7 @@ class RQTLLRoot:
         self.package_stub = packages_pb2_grpc.PackageServiceStub(self.channel)
         self.installer_stub = installer_pb2_grpc.ROSInstallerServiceStub(self.channel)
         self.workspace_stub = workspace_pb2_grpc.WorkspaceServiceStub(self.channel)
+        self.execution_stub = interactive_execution_pb2_grpc.CommandExecutionServiceStub(self.channel)
         
         self.show_startup_notification()
         if not self.check_ros2_installed():

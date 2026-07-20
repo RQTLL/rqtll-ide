@@ -143,6 +143,8 @@ class VirtualTerminal:
                     self.screen[self.cursor_row][c] = ' '
             elif mode == 2:
                 self.screen[self.cursor_row] = [' ' for _ in range(self.cols)]
+        elif cmd == 'm':
+            pass
 
     def get_text(self):
         lines = []

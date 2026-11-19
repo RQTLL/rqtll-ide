@@ -283,7 +283,7 @@ class WizardController(QObject):
             show_python=ui.CBOPT2Search.isChecked(),
             show_rti=ui.CBRti.isChecked()
         )
-        self.pkg_loader.package_received.connect(self.add_pkg_to_ui)
+        self.pkg_loader.packages_received.connect(self.add_pkg_to_ui)
         self.pkg_loader.finished.connect(self._on_initial_load_finished)
         self.pkg_loader.start()
 
@@ -404,15 +404,17 @@ class WizardController(QObject):
                 else:
                     self.pending_packages.pop(pkg_name, None)
 
-    def add_pkg_to_ui(self, pkg):
-        if not self.current_window or self.current_step_idx != 2:
+    def add_pkg_to_ui(self, pkgs):
+        if not self.current_window or self.current_step_idx != 2 or not pkgs:
             return
         ui = self.current_window.ui
         model = ui.pkg_model
-        row = model.rowCount()
-        model.beginInsertRows(QModelIndex(), row, row)
-        is_pending = pkg.name in self.pending_packages
-        model._data.append({'name': pkg.name, 'installed': pkg.is_installed, 'pending': is_pending})
+        start_row = model.rowCount()
+        end_row = start_row + len(pkgs) - 1
+        model.beginInsertRows(QModelIndex(), start_row, end_row)
+        for pkg in pkgs:
+            pkg['pending'] = pkg['name'] in self.pending_packages
+            model._data.append(pkg)
         model.endInsertRows()
 
     def _on_initial_load_finished(self):

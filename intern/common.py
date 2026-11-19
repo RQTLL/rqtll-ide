@@ -53,7 +53,7 @@ class PackageSearchThread(QThread):
             pass
 
 class PackageLoader(QThread):
-    package_received = Signal(object)
+    packages_received = Signal(list)
 
     def __init__(self, filter_text="", stub=None, show_ros=True, show_python=True, show_rti=True):
         super().__init__()
@@ -75,6 +75,7 @@ class PackageLoader(QThread):
 
     def run(self):
         try:
+            batch = []
             request = packages_pb2.ListPackagesRequest(
                 filter=self.filter_text,
                 show_ros=self.show_ros,
@@ -85,7 +86,16 @@ class PackageLoader(QThread):
             for pkg in self.call:
                 if self._is_cancelled:
                     return
-                self.package_received.emit(pkg)
+                batch.append({
+                    'name': pkg.name,
+                    'installed': pkg.is_installed,
+                    'pending': False
+                })
+                if len(batch) >= 50:
+                    self.packages_received.emit(batch)
+                    batch = []
+            if batch and not self._is_cancelled:
+                self.packages_received.emit(batch)
         except Exception:
             pass
 

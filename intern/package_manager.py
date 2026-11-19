@@ -54,7 +54,7 @@ class PackageManagerController(QObject):
             show_python=self.f4.ui.CBOPT2Search.isChecked(),
             show_rti=self.f4.ui.CBRti.isChecked()
         )
-        self.loader.package_received.connect(self.add_pkg_to_ui)
+        self.loader.packages_received.connect(self.add_pkg_to_ui)
         self.loader.finished.connect(self._on_initial_load_finished)
         self.loader.start()
 
@@ -98,7 +98,7 @@ class PackageManagerController(QObject):
             show_python=self.f4.ui.CBOPT2Search.isChecked(),
             show_rti=self.f4.ui.CBRti.isChecked()
         )
-        self.loader.package_received.connect(self.add_pkg_to_ui)
+        self.loader.packages_received.connect(self.add_pkg_to_ui)
         
         self.loader.finished.connect(self._on_initial_load_finished)
         self.loader.start()
@@ -416,12 +416,14 @@ class PackageManagerController(QObject):
                 else:
                     self.pending_packages.pop(pkg_name, None)
 
-    def add_pkg_to_ui(self, pkg):
-        if not hasattr(self, 'f4') or self.f4 is None:
+    def add_pkg_to_ui(self, pkgs):
+        if not hasattr(self, 'f4') or self.f4 is None or not pkgs:
             return
         model = self.f4.ui.pkg_model
-        row = model.rowCount()
-        model.beginInsertRows(QModelIndex(), row, row)
-        is_pending = pkg.name in self.pending_packages
-        model._data.append({'name': pkg.name, 'installed': pkg.is_installed, 'pending': is_pending})
+        start_row = model.rowCount()
+        end_row = start_row + len(pkgs) - 1
+        model.beginInsertRows(QModelIndex(), start_row, end_row)
+        for pkg in pkgs:
+            pkg['pending'] = pkg['name'] in self.pending_packages
+            model._data.append(pkg)
         model.endInsertRows()
